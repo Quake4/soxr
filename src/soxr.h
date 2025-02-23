@@ -103,7 +103,7 @@ SOXR soxr_t soxr_create(
     double      output_rate,     /* Output sample-rate. */
     unsigned int num_channels,    /* Number of channels to be used. */
         /* All following arguments are optional (may be set to NULL). */
-    soxr_error_t,              /* To report any error during creation. */
+    soxr_error_t*,              /* To report any error during creation. */
     soxr_io_spec_t const *,      /* To specify non-default I/O formats. */
     soxr_quality_spec_t const *, /* To specify non-default resampling quality.*/
     soxr_runtime_spec_t const *);/* To specify non-default runtime resources.
