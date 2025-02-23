@@ -101,9 +101,9 @@ SOXR char const * soxr_version(void);  /* Query library version: "libsoxr-x.y.z"
 SOXR soxr_t soxr_create(
     double      input_rate,      /* Input sample-rate. */
     double      output_rate,     /* Output sample-rate. */
-    unsigned    num_channels,    /* Number of channels to be used. */
+    unsigned int num_channels,    /* Number of channels to be used. */
         /* All following arguments are optional (may be set to NULL). */
-    soxr_error_t *,              /* To report any error during creation. */
+    soxr_error_t,              /* To report any error during creation. */
     soxr_io_spec_t const *,      /* To specify non-default I/O formats. */
     soxr_quality_spec_t const *, /* To specify non-default resampling quality.*/
     soxr_runtime_spec_t const *);/* To specify non-default runtime resources.
@@ -132,6 +132,7 @@ SOXR soxr_error_t soxr_process(
     zero.  End-of-input (i.e. no data is available nor shall be available)
     may be indicated by seting `in' to NULL.                                  */
 
+SOXR void soxr_delete_complete(soxr_t resampler, soxr_io_spec_t io_spec, soxr_quality_spec_t q_spec, soxr_runtime_spec_t runtime_spec);
 
 
 /* If using an app-supplied input function, it must look and behave like this:*/
@@ -184,24 +185,24 @@ SOXR void         soxr_delete(soxr_t);  /* Free resources. */
  * in memory.  See soxr_create and soxr_process above for parameter details.
  * Note that unlike soxr_create however, the default quality spec. for
  * soxr_oneshot is per soxr_quality_spec(SOXR_LQ, 0). */
-
+/*
 SOXR soxr_error_t soxr_oneshot(
     double         input_rate,
     double         output_rate,
-    unsigned       num_channels,
+    unsigned int   num_channels,
     soxr_in_t    in , size_t ilen, size_t * idone,
     soxr_out_t   out, size_t olen, size_t * odone,
     soxr_io_spec_t const *,
     soxr_quality_spec_t const *,
     soxr_runtime_spec_t const *);
-
+*/
 
 
 /* For variable-rate resampling. See example # 5 for how to create a
  * variable-rate resampler and how to use this function. */
-
+/*
 SOXR soxr_error_t soxr_set_io_ratio(soxr_t, double io_ratio, size_t slew_len);
-
+*/
 
 
 /* -------------------------- API type definitions -------------------------- */
@@ -256,10 +257,10 @@ struct soxr_quality_spec {                                       /* Typically */
 
 
 struct soxr_runtime_spec {                                       /* Typically */
-  unsigned log2_min_dft_size;   /* For DFT efficiency. [8,15]           10    */
-  unsigned log2_large_dft_size; /* For DFT efficiency. [8,20]           17    */
-  unsigned coef_size_kbytes;    /* For SOXR_COEF_INTERP_AUTO (below).   400   */
-  unsigned num_threads;         /* 0: per OMP_NUM_THREADS; 1: 1 thread.  1    */
+  unsigned int log2_min_dft_size;   /* For DFT efficiency. [8,15]           10    */
+  unsigned int log2_large_dft_size; /* For DFT efficiency. [8,20]           17    */
+  unsigned int coef_size_kbytes;    /* For SOXR_COEF_INTERP_AUTO (below).   400   */
+  unsigned int num_threads;         /* 0: per OMP_NUM_THREADS; 1: 1 thread.  1    */
   void * e;                     /* Reserved for internal use.            0    */
   unsigned long flags;          /* Per the following #defines.           0    */
 };
@@ -276,7 +277,7 @@ struct soxr_runtime_spec {                                       /* Typically */
  * parameters, with other parameters being given default values.  The default
  * values may then be overridden, directly in the structure, if needed.  */
 
-SOXR soxr_quality_spec_t soxr_quality_spec(
+SOXR soxr_quality_spec_t* soxr_quality_spec(
     unsigned long recipe,       /* Per the #defines immediately below. */
     unsigned long flags);       /* As soxr_quality_spec_t.flags. */
 
@@ -305,12 +306,12 @@ SOXR soxr_quality_spec_t soxr_quality_spec(
 
 
 
-SOXR soxr_runtime_spec_t soxr_runtime_spec(
-    unsigned num_threads);
+SOXR soxr_runtime_spec_t* soxr_runtime_spec(
+    unsigned int num_threads);
 
 
 
-SOXR soxr_io_spec_t soxr_io_spec(
+SOXR soxr_io_spec_t* soxr_io_spec(
     soxr_datatype_t itype,
     soxr_datatype_t otype);
 
@@ -329,10 +330,10 @@ SOXR soxr_io_spec_t soxr_io_spec(
  * soxr_set_error(soxr, soxr_set_io_ratio(soxr, io_ratio, 0));
  * soxr_set_error(soxr, soxr_set_num_channels(soxr, num_channels));
  */
-
+/*
 SOXR soxr_error_t soxr_set_error(soxr_t, soxr_error_t);
 SOXR soxr_error_t soxr_set_num_channels(soxr_t, unsigned);
-
+*/
 
 
 #undef SOXR

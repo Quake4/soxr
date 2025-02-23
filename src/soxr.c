@@ -67,7 +67,7 @@ typedef size_t (* interleave_t)(soxr_datatype_t data_type, void * * dest,
     sample_t const * const * src, size_t, unsigned, unsigned long *);
 
 struct soxr {
-  unsigned num_channels;
+  unsigned int num_channels;
   double io_ratio;
   soxr_error_t error;
   soxr_quality_spec_t q_spec;
@@ -100,45 +100,45 @@ struct soxr {
 
 
 
-soxr_quality_spec_t soxr_quality_spec(unsigned long recipe, unsigned long flags)
+soxr_quality_spec_t* soxr_quality_spec(unsigned long recipe, unsigned long flags)
 {
-  soxr_quality_spec_t spec, * p = &spec;
-  unsigned q = recipe & 0xf;                         /* TODO: move to soxr-lsr.c: */
-  unsigned quality = q > SOXR_LSR2Q+2? SOXR_VHQ : q > SOXR_LSR2Q? SOXR_QQ : q;
-  double rej;
-  memset(p, 0, sizeof(*p));
-  if (quality > SOXR_PRECISIONQ) {
-    p->e = "invalid quality type";
-    return spec;
-  }
-  flags |= quality < SOXR_LSR0Q ? RESET_ON_CLEAR : 0;
-  p->phase_response = "\62\31\144"[(recipe & 0x30)>>4];
-  p->stopband_begin = 1;
-  p->precision =
-    quality == SOXR_QQ      ?  0 :
-    quality <= SOXR_16_BITQ ? 16 :
-    quality <= SOXR_32_BITQ ?  4 + quality * 4 :
-    quality <= SOXR_LSR2Q   ? 55 - quality * 4 : /* TODO: move to soxr-lsr.c */
-    0;
-  rej = p->precision * linear_to_dB(2.);
-  p->flags = flags;
-  if (quality <= SOXR_32_BITQ || quality == SOXR_PRECISIONQ) {
-    #define LOW_Q_BW0     (1385 / 2048.) /* 0.67625 rounded to be a FP exact. */
-    p->passband_end = quality == 1? LOW_Q_BW0 : 1 - .05 / lsx_to_3dB(rej);
-    if (quality <= 2)
-      p->flags &= ~SOXR_ROLLOFF_NONE, p->flags |= SOXR_ROLLOFF_MEDIUM;
-  }
-  else { /* TODO: move to soxr-lsr.c */
-    static float const bw[] = {.931f, .832f, .663f};
-    p->passband_end = bw[quality - SOXR_LSR0Q];
-    if (quality == SOXR_LSR2Q) {
-      p->flags &= ~SOXR_ROLLOFF_NONE;
-      p->flags |= SOXR_ROLLOFF_LSR2Q | SOXR_PROMOTE_TO_LQ;
-    }
-  }
-  if (recipe & SOXR_STEEP_FILTER)
-    p->passband_end = 1 - .01 / lsx_to_3dB(rej);
-  return spec;
+	soxr_quality_spec_t *p = (soxr_quality_spec_t*)calloc(sizeof(*p),1);
+	unsigned q = recipe & 0xf;                         /* TODO: move to soxr-lsr.c: */
+	unsigned quality = q > SOXR_LSR2Q + 2 ? SOXR_VHQ : q > SOXR_LSR2Q ? SOXR_QQ : q;
+	double rej;
+	memset(p, 0, sizeof(*p));
+	if (quality > SOXR_PRECISIONQ) {
+		p->e = "invalid quality type";
+		return p;
+	}
+	flags |= quality < SOXR_LSR0Q ? RESET_ON_CLEAR : 0;
+	p->phase_response = "\62\31\144"[(recipe & 0x30) >> 4];
+	p->stopband_begin = 1;
+	p->precision =
+		quality == SOXR_QQ ? 0 :
+		quality <= SOXR_16_BITQ ? 16 :
+		quality <= SOXR_32_BITQ ? 4 + quality * 4 :
+		quality <= SOXR_LSR2Q ? 55 - quality * 4 : /* TODO: move to soxr-lsr.c */
+		0;
+	rej = p->precision * linear_to_dB(2.);
+	p->flags = flags;
+	if (quality <= SOXR_32_BITQ || quality == SOXR_PRECISIONQ) {
+#define LOW_Q_BW0     (1385 / 2048.) /* 0.67625 rounded to be a FP exact. */
+		p->passband_end = quality == 1 ? LOW_Q_BW0 : 1 - .05 / lsx_to_3dB(rej);
+		if (quality <= 2)
+			p->flags &= ~SOXR_ROLLOFF_NONE, p->flags |= SOXR_ROLLOFF_MEDIUM;
+	}
+	else { /* TODO: move to soxr-lsr.c */
+		static float const bw[] = { .931f, .832f, .663f };
+		p->passband_end = bw[quality - SOXR_LSR0Q];
+		if (quality == SOXR_LSR2Q) {
+			p->flags &= ~SOXR_ROLLOFF_NONE;
+			p->flags |= SOXR_ROLLOFF_LSR2Q | SOXR_PROMOTE_TO_LQ;
+		}
+	}
+	if (recipe & SOXR_STEEP_FILTER)
+		p->passband_end = 1 - .01 / lsx_to_3dB(rej);
+	return p;
 }
 
 
@@ -164,33 +164,34 @@ soxr_error_t soxr_error(soxr_t p)
 
 
 
-soxr_runtime_spec_t soxr_runtime_spec(unsigned num_threads)
+soxr_runtime_spec_t* soxr_runtime_spec(unsigned int num_threads, unsigned long flags)
 {
-  soxr_runtime_spec_t spec, * p = &spec;
-  memset(p, 0, sizeof(*p));
-  p->log2_min_dft_size = 10;
-  p->log2_large_dft_size = 17;
-  p->coef_size_kbytes = 400;
-  p->num_threads = num_threads;
-  return spec;
+	soxr_runtime_spec_t *p = (soxr_runtime_spec_t*)calloc(sizeof(*p),1);
+	memset(p, 0, sizeof(*p));
+	p->log2_min_dft_size = 10;
+	p->log2_large_dft_size = 17;
+	p->coef_size_kbytes = 400;
+	p->num_threads = num_threads;
+	p->flags = flags;
+	return p;
 }
 
 
 
-soxr_io_spec_t soxr_io_spec(
-  soxr_datatype_t itype,
-  soxr_datatype_t otype)
+soxr_io_spec_t* soxr_io_spec(
+	soxr_datatype_t itype,
+	soxr_datatype_t otype)
 {
-  soxr_io_spec_t spec, * p = &spec;
-  memset(p, 0, sizeof(*p));
-  if ((itype | otype) >= SOXR_SPLIT * 2)
-    p->e = "invalid io datatype(s)";
-  else {
-    p->itype = itype;
-    p->otype = otype;
-    p->scale = 1;
-  }
-  return spec;
+	soxr_io_spec_t *p = (soxr_io_spec_t*)calloc(sizeof(*p),1);
+	memset(p, 0, sizeof(*p));
+	if ((itype | otype) >= SOXR_SPLIT * 2)
+		p->e = "invalid io datatype(s)";
+	else {
+		p->itype = itype;
+		p->otype = otype;
+		p->scale = 1;
+	}
+	return p;
 }
 
 
@@ -331,7 +332,7 @@ extern control_block_t
 
 
 static void runtime_num(char const * env_name,
-    int min, int max, unsigned * field)
+    int min, int max, unsigned int * field)
 {
   char const * e = getenv(env_name);
   if (e) {
@@ -344,7 +345,7 @@ static void runtime_num(char const * env_name,
 
 
 static void runtime_flag(char const * env_name,
-    unsigned n_bits, unsigned n_shift, unsigned long * flags)
+	unsigned int n_bits, unsigned int n_shift, unsigned long * flags)
 {
   char const * e = getenv(env_name);
   if (e) {
@@ -358,123 +359,124 @@ static void runtime_flag(char const * env_name,
 
 
 soxr_t soxr_create(
-  double input_rate, double output_rate,
-  unsigned num_channels,
-  soxr_error_t * error0,
-  soxr_io_spec_t const * io_spec,
-  soxr_quality_spec_t const * q_spec,
-  soxr_runtime_spec_t const * runtime_spec)
+	double input_rate, double output_rate,
+	unsigned int num_channels,
+	soxr_error_t* error0,
+	soxr_io_spec_t const * io_spec,
+	soxr_quality_spec_t const * q_spec,
+	soxr_runtime_spec_t const * runtime_spec)
 {
-  double io_ratio = output_rate!=0? input_rate!=0?
-    input_rate / output_rate : -1 : input_rate!=0? -1 : 0;
-  static const float datatype_full_scale[] = {1, 1, 65536.*32768, 32768};
-  soxr_t p = 0;
-  soxr_error_t error = 0;
+	double io_ratio = output_rate != 0 ? input_rate != 0 ?
+		input_rate / output_rate : -1 : input_rate != 0 ? -1 : 0;
+	static const float datatype_full_scale[] = { 1, 1, 65536. * 32768, 32768 };
+	soxr_t p = 0;
+	soxr_error_t error = 0;
 
 #if WITH_DEV_TRACE
 #define _(x) (char)(sizeof(x)>=10? 'a'+(char)(sizeof(x)-10):'0'+(char)sizeof(x))
-  char const * e = getenv("SOXR_TRACE");
-  _soxr_trace_level = e? atoi(e) : 0;
-  {
-    static char const arch[] = {_(char), _(short), _(int), _(long), _(long long)
-      , ' ', _(float), _(double), _(long double)
-      , ' ', _(int *), _(int (*)(int))
-      , ' ', HAVE_BIGENDIAN ? 'B' : 'L'
-#if defined _OPENMP
-      , ' ', 'O', 'M', 'P'
-#endif
-      , 0};
+	char const * e = getenv("SOXR_TRACE");
+	_soxr_trace_level = e ? atoi(e) : 0;
+	{
+		static char const arch[] = { _(char), _(short), _(int), _(long), _(long long)
+		  , ' ', _(float), _(double), _(long double)
+		  , ' ', _(int *), _(int(*)(int))
+		  , ' ', HAVE_BIGENDIAN ? 'B' : 'L'
+	#if defined _OPENMP
+		  , ' ', 'O', 'M', 'P'
+	#endif
+		  , 0 };
 #undef _
-    lsx_debug("arch: %s", arch);
-  }
+		lsx_debug("arch: %s", arch);
+	}
 #endif
 
-  if (q_spec && q_spec->e)  error = q_spec->e;
-  else if (io_spec && (io_spec->itype | io_spec->otype) >= SOXR_SPLIT * 2)
-    error = "invalid io datatype(s)";
+	if (q_spec && q_spec->e)  error = q_spec->e;
+	else if (io_spec && (io_spec->itype | io_spec->otype) >= SOXR_SPLIT * 2)
+		error = "invalid io datatype(s)";
 
-  if (!error && !(p = calloc(sizeof(*p), 1))) error = "malloc failed";
+	if (!error && !(p = calloc(sizeof(*p), 1))) error = "malloc failed";
 
-  if (p) {
-    control_block_t * control_block;
+	if (p) {
+		control_block_t * control_block;
 
-    p->q_spec = q_spec? *q_spec : soxr_quality_spec(SOXR_HQ, 0);
+		p->q_spec = q_spec ? *q_spec : *soxr_quality_spec(SOXR_HQ, 0);
 
-    if (q_spec) { /* Backwards compatibility with original API: */
-      if (p->q_spec.passband_end > 2)
-        p->q_spec.passband_end /= 100;
-      if (p->q_spec.stopband_begin > 2)
-        p->q_spec.stopband_begin = 2 - p->q_spec.stopband_begin / 100;
-    }
+		if (q_spec) { /* Backwards compatibility with original API: */
+			if (p->q_spec.passband_end > 2)
+				p->q_spec.passband_end /= 100;
+			if (p->q_spec.stopband_begin > 2)
+				p->q_spec.stopband_begin = 2 - p->q_spec.stopband_begin / 100;
+		}
 
-    p->io_ratio = io_ratio;
-    p->num_channels = num_channels;
-    if (io_spec)
-      p->io_spec = *io_spec;
-    else
-      p->io_spec.scale = 1;
+		p->io_ratio = io_ratio;
+		p->num_channels = num_channels;
+		if (io_spec)
+			p->io_spec = *io_spec;
+		else
+			p->io_spec.scale = 1;
 
-    p->runtime_spec = runtime_spec? *runtime_spec : soxr_runtime_spec(1);
+		p->runtime_spec = runtime_spec ? *runtime_spec : *soxr_runtime_spec(1,0);
 
-    runtime_num("SOXR_MIN_DFT_SIZE", 8, 15, &p->runtime_spec.log2_min_dft_size);
-    runtime_num("SOXR_LARGE_DFT_SIZE", 8, 20, &p->runtime_spec.log2_large_dft_size);
-    runtime_num("SOXR_COEFS_SIZE", 100, 800, &p->runtime_spec.coef_size_kbytes);
-    runtime_num("SOXR_NUM_THREADS", 0, 64, &p->runtime_spec.num_threads);
-    runtime_flag("SOXR_COEF_INTERP", 2, 0, &p->runtime_spec.flags);
+		runtime_num("SOXR_MIN_DFT_SIZE", 8, 15, &p->runtime_spec.log2_min_dft_size);
+		runtime_num("SOXR_LARGE_DFT_SIZE", 8, 20, &p->runtime_spec.log2_large_dft_size);
+		runtime_num("SOXR_COEFS_SIZE", 100, 800, &p->runtime_spec.coef_size_kbytes);
+		runtime_num("SOXR_NUM_THREADS", 0, 64, &p->runtime_spec.num_threads);
+		runtime_flag("SOXR_COEF_INTERP", 2, 0, &p->runtime_spec.flags);
 
-    runtime_flag("SOXR_STRICT_BUF", 1, 2, &p->runtime_spec.flags);
-    runtime_flag("SOXR_NOSMALLINTOPT", 1, 3, &p->runtime_spec.flags);
+		runtime_flag("SOXR_STRICT_BUF", 1, 2, &p->runtime_spec.flags);
+		runtime_flag("SOXR_NOSMALLINTOPT", 1, 3, &p->runtime_spec.flags);
 
-    p->io_spec.scale *= datatype_full_scale[p->io_spec.otype & 3] /
-                        datatype_full_scale[p->io_spec.itype & 3];
+		p->io_spec.scale *= datatype_full_scale[p->io_spec.otype & 3] /
+			datatype_full_scale[p->io_spec.itype & 3];
 
-    p->seed = (unsigned long)time(0) ^ (unsigned long)(size_t)p;
+		p->seed = (unsigned long)time(0) ^ (unsigned long)(size_t)p;
 
 #if WITH_CR32 || WITH_CR32S || WITH_VR32
-    if (0
+		if (0
 #if WITH_VR32
-        || ((!WITH_CR32 && !WITH_CR32S) || (p->q_spec.flags & SOXR_VR))
+			|| ((!WITH_CR32 && !WITH_CR32S) || (p->q_spec.flags & SOXR_VR))
 #endif
 #if WITH_CR32 || WITH_CR32S
-        || !(WITH_CR64 || WITH_CR64S) || (p->q_spec.precision <= 20 && !(p->q_spec.flags & SOXR_DOUBLE_PRECISION))
+			|| !(WITH_CR64 || WITH_CR64S) || (p->q_spec.precision <= 20 && !(p->q_spec.flags & SOXR_DOUBLE_PRECISION))
 #endif
-        ) {
-      p->deinterleave = (deinterleave_t)_soxr_deinterleave_f;
-      p->interleave = (interleave_t)_soxr_interleave_f;
-      control_block =
+			) {
+			p->deinterleave = (deinterleave_t)_soxr_deinterleave_f;
+			p->interleave = (interleave_t)_soxr_interleave_f;
+			control_block =
 #if WITH_VR32
-          ((!WITH_CR32 && !WITH_CR32S) || (p->q_spec.flags & SOXR_VR))? &_soxr_vr32_cb :
+			((!WITH_CR32 && !WITH_CR32S) || (p->q_spec.flags & SOXR_VR)) ? &_soxr_vr32_cb :
 #endif
 #if WITH_CR32S
-          !WITH_CR32 || should_use_simd32()? &_soxr_rate32s_cb :
+				!WITH_CR32 || should_use_simd32() ? &_soxr_rate32s_cb :
 #endif
-          &_soxr_rate32_cb;
-    }
+				&_soxr_rate32_cb;
+		}
 #if WITH_CR64 || WITH_CR64S
-    else
+		else
 #endif
 #endif
 #if WITH_CR64 || WITH_CR64S
-    {
-      p->deinterleave = (deinterleave_t)_soxr_deinterleave;
-      p->interleave = (interleave_t)_soxr_interleave;
-      control_block =
+		{
+			p->deinterleave = (deinterleave_t)_soxr_deinterleave;
+			p->interleave = (interleave_t)_soxr_interleave;
+			control_block =
 #if WITH_CR64S
-          !WITH_CR64 || should_use_simd64()? &_soxr_rate64s_cb :
+				!WITH_CR64 || should_use_simd64() ? &_soxr_rate64s_cb :
 #endif
-          &_soxr_rate64_cb;
-    }
+				&_soxr_rate64_cb;
+		}
 #endif
-    memcpy(&p->control_block, control_block, sizeof(p->control_block));
+		memcpy(&p->control_block, control_block, sizeof(p->control_block));
 
-    if (p->num_channels && io_ratio!=0)
-      error = soxr_set_io_ratio(p, io_ratio, 0);
-  }
-  if (error)
-    soxr_delete(p), p = 0;
-  if (error0)
-    *error0 = error;
-  return p;
+		if (p->num_channels && io_ratio != 0)
+			error = soxr_set_io_ratio(p, io_ratio, 0);
+	}
+	if (error)
+		soxr_delete(p), p = 0;
+	//if (error0)
+		*error0 = error;
+		//strcpy(error0, error);
+	return p;
 }
 
 
@@ -555,7 +557,7 @@ static soxr_error_t initialise(soxr_t p)
 
 
 
-soxr_error_t soxr_set_num_channels(soxr_t p, unsigned num_channels)
+soxr_error_t soxr_set_num_channels(soxr_t p, unsigned int num_channels)
 {
   if (!p)                return "invalid soxr_t pointer";
   if (num_channels == p->num_channels) return p->error;
@@ -597,6 +599,15 @@ void soxr_delete(soxr_t p)
 }
 
 
+void soxr_delete_complete(soxr_t p, soxr_io_spec_t io_spec, soxr_quality_spec_t q_spec, soxr_runtime_spec_t runtime_spec)
+{
+	free(&io_spec);
+	free(&q_spec);
+	free(&runtime_spec);
+	
+	soxr_delete(p);
+}
+
 
 soxr_error_t soxr_clear(soxr_t p) /* TODO: this, properly. */
 {
@@ -621,7 +632,7 @@ soxr_error_t soxr_clear(soxr_t p) /* TODO: this, properly. */
 
 
 
-static void soxr_input_1ch(soxr_t p, unsigned i, soxr_cbuf_t src, size_t len)
+static void soxr_input_1ch(soxr_t p, unsigned int i, soxr_cbuf_t src, size_t len)
 {
   sample_t * dest = resampler_input(p->resamplers[i], NULL, len);
   (*p->deinterleave)(&dest, p->io_spec.itype, &src, len, 1);
@@ -653,7 +664,7 @@ static size_t soxr_input(soxr_t p, void const * in, size_t len)
 
 
 
-static size_t soxr_output_1ch(soxr_t p, unsigned i, soxr_buf_t dest, size_t len, bool separated)
+static size_t soxr_output_1ch(soxr_t p, unsigned int i, soxr_buf_t dest, size_t len, bool separated)
 {
   sample_t const * src;
   if (p->flushing)
@@ -805,10 +816,10 @@ soxr_error_t soxr_process(soxr_t p,
 }
 
 
-
+/*
 soxr_error_t soxr_oneshot(
     double irate, double orate,
-    unsigned num_channels,
+	unsigned int num_channels,
     void const * in , size_t ilen, size_t * idone,
     void * out, size_t olen, size_t * odone,
     soxr_io_spec_t const * io_spec,
@@ -820,7 +831,7 @@ soxr_error_t soxr_oneshot(
   if (!error) {
     soxr_quality_spec_t q_spec1;
     if (!q_spec)
-      q_spec1 = soxr_quality_spec(SOXR_LQ, 0), q_spec = &q_spec1;
+      q_spec1 = *soxr_quality_spec(SOXR_LQ, 0), q_spec = &q_spec1;
     resampler = soxr_create(irate, orate, num_channels,
         &error, io_spec, q_spec, runtime_spec);
   }
@@ -830,7 +841,7 @@ soxr_error_t soxr_oneshot(
   }
   return error;
 }
-
+*/
 
 
 soxr_error_t soxr_set_error(soxr_t p, soxr_error_t error)
