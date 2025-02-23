@@ -200,9 +200,9 @@ SOXR soxr_error_t soxr_oneshot(
 
 /* For variable-rate resampling. See example # 5 for how to create a
  * variable-rate resampler and how to use this function. */
-/*
+
 SOXR soxr_error_t soxr_set_io_ratio(soxr_t, double io_ratio, size_t slew_len);
-*/
+
 
 
 /* -------------------------- API type definitions -------------------------- */
