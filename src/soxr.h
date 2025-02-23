@@ -307,7 +307,7 @@ SOXR soxr_quality_spec_t* soxr_quality_spec(
 
 
 SOXR soxr_runtime_spec_t* soxr_runtime_spec(
-    unsigned int num_threads);
+    unsigned int num_threads, unsigned long flags);
 
 
 
